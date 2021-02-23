@@ -56,8 +56,8 @@ steps:
   # This step copies the applied manifest to the production branch
   # The COMMIT_SHA variable is automatically
   # replaced by Cloud Build.
-  - name: 'gcr.io/cloud-builders/git'
-    id: Clone env repository from github
+  - id: Clone env repository from github
+    name: 'gcr.io/cloud-builders/git'
     args:
       - clone
       - --recurse-submodules
@@ -67,8 +67,8 @@ steps:
         path: /root/.ssh
 
 
-  - name: 'gcr.io/cloud-builders/git'
-    id: Copy to production branch
+  - id: Copy to production branch
+    name: 'gcr.io/cloud-builders/git'
     entrypoint: /bin/sh
     args:
       - '-c'
@@ -77,7 +77,9 @@ steps:
         git config user.email $(gcloud auth list --filter=status:ACTIVE --format='value(account)') && \
         git fetch origin production && git checkout production && \
         git checkout $COMMIT_SHA kubernetes.yaml && \
-        git commit -m "Manifest from commit $COMMIT_SHA
+        git commit \
+        --author="Cloud Build Service Account <$(gcloud auth list --filter=status:ACTIVE --format='value(account)')>" \
+        -m "Manifest from commit $COMMIT_SHA
         $(git log --format=%B -n 1 $COMMIT_SHA)" && \
         git push origin production
     volumes:
