@@ -50,8 +50,6 @@ steps:
     volumes:
       - name: 'ssh'
         path: /root/.ssh
-  # GitHub Access
-
 
   # This step copies the applied manifest to the production branch
   # The COMMIT_SHA variable is automatically
@@ -65,22 +63,24 @@ steps:
     volumes:
       - name: 'ssh'
         path: /root/.ssh
+  # GitHub Access
 
-
+  # dirを変更するのがポイント
   - id: Copy to production branch
     name: 'gcr.io/cloud-builders/git'
+    dir: go-grpc-health-probe-sample-manifests
     entrypoint: /bin/sh
     args:
       - '-c'
       - |
         set -x && \
-        # git config user.email $(gcloud auth list --filter=status:ACTIVE --format='value(account)') && \
         git config --global user.email $(git log --format='%an <%ae>' -n 1 HEAD | sed 's/.*\<\([^>]*\)\>.*/\1/g') && \
-        git fetch origin production && git checkout production && \
+        git fetch origin production && git switch production && \
         git checkout $COMMIT_SHA kubernetes.yaml && \
         git commit \
         --author="Cloud Build Service Account <$(gcloud auth list --filter=status:ACTIVE --format='value(account)')>" \
         -m "Manifest from commit $COMMIT_SHA
+
         $(git log --format=%B -n 1 $COMMIT_SHA)" && \
         git push origin production
     volumes:
