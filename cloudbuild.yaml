@@ -68,7 +68,7 @@ steps:
   # dirを変更するのがポイント
   - id: Copy to production branch
     name: 'gcr.io/cloud-builders/git'
-    dir: go-grpc-health-probe-sample-manifests
+    dir: gcp-gke-gitops-env
     entrypoint: /bin/sh
     args:
       - '-c'
