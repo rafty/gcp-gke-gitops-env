@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
         - name: gke-gitops
-          image: gcr.io/ygt-gke-gitops/gke-gitops:448eb36
+          image: gcr.io/ygt-gke-gitops/gke-gitops:82baf86
           ports:
             - containerPort: 8080
 ---
