@@ -76,7 +76,7 @@ steps:
         set -x && \
         git config --global user.email $(git log --format='%an <%ae>' -n 1 HEAD | sed 's/.*\<\([^>]*\)\>.*/\1/g') && \
         git fetch origin production && git switch production && \
-        git checkout $COMMIT_SHA kubernetes.yaml && \
+        git checkout $COMMIT_SHA ../kubernetes.yaml && \
         git commit \
         --author="Cloud Build Service Account <$(gcloud auth list --filter=status:ACTIVE --format='value(account)')>" \
         -m "Manifest from commit $COMMIT_SHA
