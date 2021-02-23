@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# [START cloudbuild-delivery]
 steps:
-  # This step deploys the new version of our container image
-  # in the gek-gitops-cluster Kubernetes Engine cluster.
-  - name: 'gcr.io/cloud-builders/kubectl'
-    id: Deploy
+  - id: Deploy the new version of our container image
+    name: 'gcr.io/cloud-builders/kubectl'
     args:
       - 'apply'
       - '-f'
@@ -26,11 +23,39 @@ steps:
       - 'CLOUDSDK_COMPUTE_ZONE=${_CLOUDSDK_COMPUTE_ZONE}'
       - 'CLOUDSDK_CONTAINER_CLUSTER=${_CLOUDSDK_CONTAINER_CLUSTER}'
 
+  # GitHub Access
+  - id: access the id_github file from secret manager
+    name: gcr.io/cloud-builders/gcloud
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud secrets versions access latest --secret=id_github > /root/.ssh/id_github
+    volumes:
+      - name: 'ssh'
+        path: /root/.ssh
+
+  - id: Set up git with key and domain
+    name: 'gcr.io/cloud-builders/git'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        chmod 600 /root/.ssh/id_github
+        cat <<EOF >/root/.ssh/config
+        Hostname github.com
+        IdentityFile /root/.ssh/id_github
+        EOF
+        ssh-keyscan -t rsa github.com > /root/.ssh/known_hosts
+    volumes:
+      - name: 'ssh'
+        path: /root/.ssh
+  # GitHub Access
+
 
   # This step copies the applied manifest to the production branch
   # The COMMIT_SHA variable is automatically
   # replaced by Cloud Build.
-
   - name: 'gcr.io/cloud-builders/git'
     id: Clone env repository from github
     args:
@@ -55,8 +80,10 @@ steps:
         git commit -m "Manifest from commit $COMMIT_SHA
         $(git log --format=%B -n 1 $COMMIT_SHA)" && \
         git push origin production
+    volumes:
+      - name: 'ssh'
+        path: /root/.ssh
 
 substitutions:
   _CLOUDSDK_COMPUTE_ZONE: asia-northeast1-a
   _CLOUDSDK_CONTAINER_CLUSTER: gek-gitops-cluster
-# [END cloudbuild-delivery]
