@@ -65,6 +65,15 @@ steps:
         path: /root/.ssh
   # GitHub Access
 
+  - id: Copy file
+    name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: /bin/sh
+    args:
+      - '-c'
+      - |
+        set -x && \
+        cp kubernetes.yaml gcp-gke-gitops-env/
+
   # dirを変更するのがポイント
   - id: Copy to production branch
     name: 'gcr.io/cloud-builders/git'
@@ -76,7 +85,7 @@ steps:
         set -x && \
         git config --global user.email $(git log --format='%an <%ae>' -n 1 HEAD | sed 's/.*\<\([^>]*\)\>.*/\1/g') && \
         git fetch origin production && git switch production && \
-        git checkout $COMMIT_SHA ../kubernetes.yaml && \
+        git checkout $COMMIT_SHA kubernetes.yaml && \
         git commit \
         --author="Cloud Build Service Account <$(gcloud auth list --filter=status:ACTIVE --format='value(account)')>" \
         -m "Manifest from commit $COMMIT_SHA
