@@ -1,45 +1,35 @@
-# Copyright 2018 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     https://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+substitutions:
+  _CLOUDSDK_COMPUTE_ZONE: asia-northeast1-a
+  _CLOUDSDK_CONTAINER_CLUSTER: gek-gitops-cluster
 
 steps:
-  - id: Deploy the new version of our container image
-    name: 'gcr.io/cloud-builders/kubectl'
+  - id: 'Deploy the new version of container image'
+    name: gcr.io/cloud-builders/kubectl
     args:
-      - 'apply'
-      - '-f'
-      - 'kubernetes.yaml'
+      - apply
+      - -f
+      - kubernetes.yaml
     env:
-      - 'CLOUDSDK_COMPUTE_ZONE=${_CLOUDSDK_COMPUTE_ZONE}'
-      - 'CLOUDSDK_CONTAINER_CLUSTER=${_CLOUDSDK_CONTAINER_CLUSTER}'
+      - CLOUDSDK_COMPUTE_ZONE=$_CLOUDSDK_COMPUTE_ZONE
+      - CLOUDSDK_CONTAINER_CLUSTER=$_CLOUDSDK_CONTAINER_CLUSTER
 
-  # GitHub Access
-  - id: access the id_github file from secret manager
+  ### - GitHub Env repo Access by SSH
+  - id: 'access the id_github file from secret manager'
     name: gcr.io/cloud-builders/gcloud
-    entrypoint: 'bash'
+    entrypoint: bash
     args:
-      - '-c'
+      - -c
       - |
         gcloud secrets versions access latest --secret=id_github > /root/.ssh/id_github
     volumes:
-      - name: 'ssh'
+      - name: ssh
         path: /root/.ssh
 
-  - id: Set up git with key and domain
-    name: 'gcr.io/cloud-builders/git'
-    entrypoint: 'bash'
+  - id: 'Set up git with key and domain'
+    name: gcr.io/cloud-builders/git
+    entrypoint: bash
     args:
-      - '-c'
+      - -c
       - |
         chmod 600 /root/.ssh/id_github
         cat <<EOF >/root/.ssh/config
@@ -48,24 +38,21 @@ steps:
         EOF
         ssh-keyscan -t rsa github.com > /root/.ssh/known_hosts
     volumes:
-      - name: 'ssh'
+      - name: ssh
         path: /root/.ssh
 
-  # This step copies the applied manifest to the production branch
-  # The COMMIT_SHA variable is automatically
-  # replaced by Cloud Build.
-  - id: Clone env repository from github
-    name: 'gcr.io/cloud-builders/git'
+  - id: 'Clone env repository from github'
+    name: gcr.io/cloud-builders/git
     args:
       - clone
       - --recurse-submodules
       - git@github.com:rafty/gcp-gke-gitops-env.git
     volumes:
-      - name: 'ssh'
+      - name: ssh
         path: /root/.ssh
-  # GitHub Access
+  ### - GitHub Env repo Access by SSH
 
-  - id: Copy file
+  - id: 'Copy file'
     name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: /bin/sh
     args:
@@ -75,12 +62,12 @@ steps:
         cp kubernetes.yaml gcp-gke-gitops-env/
 
   # dirを変更するのがポイント
-  - id: Copy to production branch
-    name: 'gcr.io/cloud-builders/git'
+  - id: 'Copy to production branch'
+    name: gcr.io/cloud-builders/git
     dir: gcp-gke-gitops-env
     entrypoint: /bin/sh
     args:
-      - '-c'
+      - -c
       - |
         set -x && \
         git config --global user.email $(git log --format='%an <%ae>' -n 1 HEAD | sed 's/.*\<\([^>]*\)\>.*/\1/g') && \
@@ -88,14 +75,8 @@ steps:
         git checkout $COMMIT_SHA kubernetes.yaml && \
         git commit \
         --author="Cloud Build Service Account <$(gcloud auth list --filter=status:ACTIVE --format='value(account)')>" \
-        -m "Manifest from commit $COMMIT_SHA
-
-        $(git log --format=%B -n 1 $COMMIT_SHA)" && \
+        -m "Manifest from commit $COMMIT_SHA $(git log --format=%B -n 1 $COMMIT_SHA)" && \
         git push origin production
     volumes:
-      - name: 'ssh'
+      - name: ssh
         path: /root/.ssh
-
-substitutions:
-  _CLOUDSDK_COMPUTE_ZONE: asia-northeast1-a
-  _CLOUDSDK_CONTAINER_CLUSTER: gek-gitops-cluster
