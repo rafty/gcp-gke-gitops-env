@@ -53,7 +53,7 @@ steps:
   ### - GitHub Env repo Access by SSH
 
   # dirを変更するのがポイント
-  - id: 'Copy to production branch'
+  - id: 'Checkout production branch'
     name: gcr.io/cloud-builders/git
     dir: gcp-gke-gitops-env
     entrypoint: /bin/sh
@@ -69,10 +69,10 @@ steps:
         path: /root/.ssh
 
   - id: 'Copy file'
-    name: 'gcr.io/cloud-builders/gcloud'
+    name: gcr.io/cloud-builders/gcloud
     entrypoint: /bin/sh
     args:
-      - '-c'
+      - -c
       - |
         set -x && \
         cp kubernetes.yaml gcp-gke-gitops-env/
